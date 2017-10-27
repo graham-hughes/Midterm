@@ -23,6 +23,7 @@ contract Token is ERC20Interface {
     function Token(uint256 _totalSupply) {
     	owner = msg.sender;
     	totalSupply = _totalSupply;
+    	balances[owner] = _totalSupply;
     }
 
     /// @param _owner The address from which the balance will be retrieved
