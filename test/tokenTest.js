@@ -39,4 +39,62 @@ contract('tokenTest', function(accounts) {
 			assert.equal(balanceCreator, 100, "Creator of token has correct balance");
 		});
 	});
+	describe('--Transferring--', function() {
+		it("The owner should be able to transfer entire balance to receiver", async function() {
+			await token.transfer(accounts[1], 100, { from: owner} );
+			let balanceReceiver = await token.balanceOf(accounts[1]);
+			let balanceCreator = await token.balanceOf(owner);
+
+			assert.equal(balanceReceiver.valueOf(), 100, "Receiver of token has correct balance");
+			assert.equal(balanceCreator.valueOf(), 0, "Sender of token has correct balance");
+		});
+	});
+	describe('--Burning--', function() {
+		it("The owner should be able to burn, reflected in totalSupply and balance", async function() {
+			await token.burn(100, { from: owner} );
+			let totalSupply = await token.totalSupply.call();
+			let balanceCreator = await token.balanceOf(owner);
+
+			assert.equal(totalSupply.valueOf(), 0, "totalSupply now 0");
+			assert.equal(balanceCreator.valueOf(), 0, "Sender of token has burned entire balance");
+		});
+		it("Buyers should be able to burn, reflected in totalSupply and balance", async function() {
+			await token.transfer(accounts[1], 50, { from: owner} );
+			await token.burn(25, { from: accounts[1]} );
+			let totalSupply = await token.totalSupply.call();
+			let balanceBuyer = await token.balanceOf(accounts[1]);
+
+			assert.equal(totalSupply.valueOf(), 75, "totalSupply now 75");
+			assert.equal(balanceBuyer.valueOf(), 25, "Buyer burned half of balance, 25 left");
+		});
+	});
+	describe('--Minting--', function() {
+		it("The owner should be mint coins, reflected in totalSupply and balance", async function() {
+			await token.mint(100, { from: owner} );
+			let totalSupply = await token.totalSupply.call();
+			let balanceCreator = await token.balanceOf(owner);
+
+			assert.equal(totalSupply.valueOf(), 200, "totalSupply now 0");
+			assert.equal(balanceCreator.valueOf(), 200, "Sender of token has burned entire balance");
+		});
+	});
+	describe('--Allowances--', function() {
+		it("The owner should be able to assign allowance", async function() {
+			await token.approve(accounts[1], 100, { from: owner} );
+			let allowance = await token.allowance(owner, accounts[1]);
+
+			assert.equal(allowance.valueOf(), 100, "Allowance correct");
+		});
+		it("The sender should be able to spend allowance, and allowance should decrease", async function() {
+			await token.approve(accounts[1], 100, { from: owner} );
+			await token.transferFrom(owner, accounts[2], 50, {from : accounts[1]})
+			let allowance = await token.allowance(owner, accounts[1]);
+			let balanceReceiver = await token.balanceOf(accounts[2]);
+			let balanceOwner = await token.balanceOf(owner);
+
+			assert.equal(balanceOwner.valueOf(), 50, "Balance of owner correct");
+			assert.equal(balanceReceiver.valueOf(), 50, "Balance of reciever correct");
+			assert.equal(allowance.valueOf(), 50, "Allowance after spending correct");
+		});
+	});
 });
