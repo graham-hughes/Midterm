@@ -19,6 +19,11 @@ contract Token is ERC20Interface {
     // Maps account addresses to other accounts and their corresponding allowances
     mapping(address => mapping(address => uint256)) allowances;
     
+    modifier isOwner() {
+    	require(msg.sender == owner);
+    	_;
+    }
+
     // Constructor
     function Token(uint256 _totalSupply) {
     	owner = msg.sender;
@@ -91,8 +96,8 @@ contract Token is ERC20Interface {
     /// @param _value The amount of token to be burned
     /// @return Whether the burn was successful or not
     function burn(uint256 _value) returns (bool success) {
-    	// Check senders balance, make sure burn is positive and doesn't cause underflow
-    	if (balances[msg.sender] >= _value && _value > 0 && balances[msg.sender] - _value < balances[msg.sender]) {
+    	// Check senders balance, make sure burn is positive and doesn't cause underflow in balance or supply
+    	if (balances[msg.sender] >= _value && _value > 0 && balances[msg.sender] - _value < balances[msg.sender] && totalSupply - _value < totalSupply) {
     		// Remove burned value from senders account
     		balances[msg.sender] -= _value;
     		// Remove burned tokens from supply
@@ -102,6 +107,22 @@ contract Token is ERC20Interface {
     		return true;
     	}
     	// Return false if sender lacks adequate balance to burn _value
+    	return false;
+    }
+
+    /// @notice mint `_value` token to owner
+    /// @param _value The amount of token to be minted
+    /// @return Whether the mint was successful or not
+    function mint(uint256 _value) returns (bool success) isOwner() {
+    	// Prevents minting from overflowing totalSupply
+    	if (_totalSupply + _value > totalSupply) {
+    		// Adds minted value to owners account
+    		balances[owner] += _value;
+    		// Adds minted tokens to supply
+    		totalSupply += _value;
+    		return true;
+    	}
+    	// Return false if minting would overflow totalSupply
     	return false;
     }
 
