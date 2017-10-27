@@ -14,11 +14,13 @@ contract('tokenTest', function(accounts) {
 	const args = {_zero: 0};
 	let token;
 	// YOUR CODE HERE
+	let owner;
 
 	/* Do something before every `describe` method */
 	beforeEach(async function() {
 		// deploy new token to use with 100 coin initial supply
-		token = await Token.new(100, { from: accounts[0] });
+		owner = accounts[0];
+		token = await Token.new(100, { from:  owner});
 	});
 
 	/* Group test cases together 
@@ -29,14 +31,12 @@ contract('tokenTest', function(accounts) {
 		it("The newly instantiated token should have 100 coin supply", async function() {
 			let totalSupply = await token.totalSupply.call();
 
-			let isEmpty = await queue.empty.call();
 			assert.equal(totalSupply, 100, "Newly instantiated token has correct supply");
 		});
 		it("The balanceOf the creator should be 100, the initial coin supply", async function() {
-			let balanceCreator = await token.balanceOf(accounts[0]);
+			let balanceCreator = await token.balanceOf(owner);
 
-			let isEmpty = await queue.empty.call();
-			assert.equal(totalSupply, 100, "Creator of token has correct balance");
+			assert.equal(balanceCreator, 100, "Creator of token has correct balance");
 		});
 	});
 });
