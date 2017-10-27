@@ -87,5 +87,25 @@ contract Token is ERC20Interface {
     	return allowances[_owner][_spender];
     }
 
+    /// @notice burn `_value` token from `msg.sender`
+    /// @param _value The amount of token to be burned
+    /// @return Whether the burn was successful or not
+    function burn(uint256 _value) returns (bool success) {
+    	// Check senders balance, make sure burn is positive and doesn't cause underflow
+    	if (balances[msg.sender] >= _value && _value > 0 && balances[msg.sender] - _value < balances[msg.sender]) {
+    		// Remove burned value from senders account
+    		balances[msg.sender] -= _value;
+    		// Remove burned tokens from supply
+    		totalSupply -= _value;
+    		// Trigger burn event
+    		Burn(msg.sender, _value); 
+    		return true;
+    	}
+    	// Return false if sender lacks adequate balance to burn _value
+    	return false;
+    }
+
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);}
+    event Burn(address indexed _owner, uint256 _value);}
+
