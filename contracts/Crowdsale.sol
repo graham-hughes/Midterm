@@ -2,6 +2,7 @@ pragma solidity ^0.4.15;
 
 import './Queue.sol';
 import './Token.sol';
+import './utils/SafeMath.sol';
 
 /**
  * @title Crowdsale
@@ -17,81 +18,136 @@ contract Crowdsale {
     uint public end_time;
     uint256 public oneWeiValue;
     uint256 public tokensSold;
+    mapping(address => uint256) tokenBalances;
+    address[] tokenAddresses;
+    bool deployed;
 
-    Event Transfer(address from, address to, uint256 amount);
-    Event Refund(address refunded, uint256 amount);
-    Event EndSale(); //end of the sale when now >=end_time
+    event tokenPurchase (address transfer, uint256 value);
+    event tokenRefund (address refunded, uint256 value);
 
     modifier timeCheck() {
-        if (now >= end_time) {
-            EndSale();
-        }
-        else  {
-            _;
-        }
+        require(now<end_time);
+        _;
     }
 
     modifier ownerOnly() {
-        if (msg.sender == owner) {
-            _;
-        } else {
-            revert();
-        }
-    }
-
-    modifier buyable() {
-        // will first check queue to potentially dequeue first in line
-        buyerQueue.checkTime();
-        if (buyerQueue.qsize() > 1) && (buyerQueue.getFirst()==msg.sender) {
-            _;
-        } else {
-            revert();
-        }
-    }
-
-    modifier checkTokens() {
-        if  (msg.value*oneWeiValue + tokensSold > tokenReward.totalSupply) {
-            revert()
-        } else {
-            _;
-        }
+        require(msg.sender==owner);
+        _;
     }
 
     /* Constructor */
-    function Crowdsale(uint256 _initialSupply, uint _queueLimit, uint _durationInMinutes, uint256 _valueOneWei) {
+    function Crowdsale(uint256 _initialSupply, uint _queueTimeLimit, uint _durationInMinutes, uint256 _valueOneWei) {
+        deployed = false;
         owner = msg.sender;
         tokenReward = new Token(_initialSupply);
-        Queue = new Queue(_queueLimit);
+        buyerQueue = new Queue(_queueTimeLimit);
         start_time = now;
         end_time = start_time + (_durationInMinutes * 1 minutes);
         oneWeiValue = _valueOneWei;
         tokensSold = 0;
     }
 
-    function mintTokens(uint256 _newTokensAmount) ownerOnly {
-
+    function getFirstBuyer() constant returns(address) {
+        return buyerQueue.getFirst();
     }
 
-    function burnTokens(uint256 _burnTokenAmout) ownerOnly {
-
+    function getQSize() constant returns(uint8) {
+        return buyerQueue.qsize();
     }
 
-    function external enqueueBuyer() timeCheck {
+    function getTotalSupply() constant returns(uint256) {
+        return tokenReward.totalSupply();
+    }
+
+    function getTokenBalance() constant returns(uint256) {
+        return tokenBalances[msg.sender];
+    }
+
+    function checkQueueTime() {
+        buyerQueue.checkTime();
+    }
+
+    function mintTokens(uint256 _mintTokens) ownerOnly returns (bool success) {
+        return tokenReward.mint(_mintTokens);
+    }
+
+    function burnTokens(uint256 _burnTokens) ownerOnly returns (bool success) {
+        require(tokensSold + _burnTokens <= tokenReward.totalSupply());
+        return tokenReward.burn(_burnTokens);
+    }
+
+    /* checks the queue timer and enqueues the sender if possible */
+    function enqueueBuyer() external timeCheck {
         buyerQueue.checkTime();
         buyerQueue.enqueue(msg.sender);
     }
 
-    function external buyTokens() timeCheck, buyable, checkTokens{
-
+    /* transfers tokens and takes wei based on if the buyer is in the first queue*/
+    function buyTokens() external payable timeCheck returns (bool success) {
+        // will first check queue to potentially dequeue first in line
+        buyerQueue.checkTime();
+        if ((buyerQueue.qsize() > 1) && (buyerQueue.getFirst()==msg.sender)) {
+            uint256 value = SafeMath.mul(oneWeiValue, msg.value);
+            // checks to see if overflow
+            if (value+tokensSold <= tokenReward.totalSupply()) {
+                tokensSold = SafeMath.add(tokensSold, value);
+                tokenBalances[msg.sender] = SafeMath.add(tokenBalances[msg.sender], value);
+                tokenAddresses.push(msg.sender);
+                tokenPurchase(msg.sender, value);
+                buyerQueue.dequeue();
+                return true;
+            } else {
+                revert();
+                return false;
+            }
+        } else {
+            return false;
+        }
     }
 
-    function external refundTokens(uint256 _amountRefund) timeCheck {
-
+    /* allows user to refund a certain amount of tokens */
+    function refundTokens(uint256 _tokenRefund) external timeCheck {
+        require(_tokenRefund <= tokenBalances[msg.sender]);
+        uint256 weiValue = SafeMath.mul(_tokenRefund, oneWeiValue);
+        tokenBalances[msg.sender] -= _tokenRefund;
+        tokensSold -= _tokenRefund;
+        msg.sender.transfer(weiValue);
+        tokenRefund(msg.sender, _tokenRefund);
     }
 
     /* refunds the user all tokens and wei */
-    function external refundAll() timeCheck {
+    function refundAll() external timeCheck {
+        uint256 _tokenRefund = tokenBalances[msg.sender];
+        uint256 weiValue = SafeMath.mul(_tokenRefund, oneWeiValue);
+        tokenBalances[msg.sender] -= _tokenRefund;
+        tokensSold -= _tokenRefund;
+        msg.sender.transfer(weiValue);
+        tokenRefund(msg.sender, _tokenRefund);
+    }
 
+    /* actually transfers tokens based on mapping if time is after duration */
+    function deployTokens() returns (bool success) {
+        if (now < end_time || deployed) {
+            return false;
+        } else {
+            deployed = true;
+            for (uint i = 0; i < tokenAddresses.length; i++) {
+                address tokenAdd = tokenAddresses[i];
+                uint256 tokenValue = tokenBalances[tokenAdd];
+                tokenBalances[tokenAdd] = 0;
+                tokenReward.transfer(tokenAdd, tokenValue);
+            }
+        }
+    }
+    
+    /* allows the owner to withdraw funds after end_time is reached. Will return
+    false if it is still sale time */
+    function withDrawFunds() ownerOnly returns (bool success) {
+        if (now>=end_time) {
+            owner.transfer(this.balance);
+            return true;
+        }
+        return false;
     }
 
     function() payable {
