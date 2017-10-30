@@ -2,13 +2,13 @@
 
 /* Add the dependencies you're testing */
 const Token = artifacts.require("./Token.sol");
-// YOUR CODE HERE
-var Web3 = require('web3');
-var web3 = new Web3();
-web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
+// // YOUR CODE HERE
+// var Web3 = require('web3');
+// var web3 = new Web3();
+// web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
 
 contract('tokenTest', function(accounts) {
-	/* Define your constant variables and instantiate constantly changing 
+	/* Define your constant variables and instantiate constantly changing
 	 * ones
 	 */
 	const args = {_zero: 0};
@@ -23,7 +23,7 @@ contract('tokenTest', function(accounts) {
 		token = await Token.new(100, { from:  owner});
 	});
 
-	/* Group test cases together 
+	/* Group test cases together
 	 * Make sure to provide descriptive strings for method arguements and
 	 * assert statements
 	 */

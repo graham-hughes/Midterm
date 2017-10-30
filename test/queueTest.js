@@ -2,13 +2,13 @@
 
 /* Add the dependencies you're testing */
 const Queue = artifacts.require("./Queue.sol");
-// YOUR CODE HERE
-var Web3 = require('web3');
-var web3 = new Web3();
-web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
+// // YOUR CODE HERE
+// var Web3 = require('web3');
+// var web3 = new Web3();
+// web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
 
 contract('queueTest', function(accounts) {
-	/* Define your constant variables and instantiate constantly changing 
+	/* Define your constant variables and instantiate constantly changing
 	 * ones
 	 */
 	const args = {_zero: 0};
@@ -21,7 +21,7 @@ contract('queueTest', function(accounts) {
 		queue = await Queue.new(30);
 	});
 
-	/* Group test cases together 
+	/* Group test cases together
 	 * Make sure to provide descriptive strings for method arguements and
 	 * assert statements
 	 */

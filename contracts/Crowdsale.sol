@@ -26,6 +26,7 @@ contract Crowdsale {
     event tokenRefund (address refunded, uint256 value);
 
     modifier timeCheck() {
+        require(!deployed);
         require(now<end_time);
         _;
     }
@@ -59,8 +60,8 @@ contract Crowdsale {
         return tokenReward.totalSupply();
     }
 
-    function getTokenBalance() constant returns(uint256) {
-        return tokenBalances[msg.sender];
+    function getTokenBalance(address _owner) constant returns(uint256) {
+        return tokenBalances[_owner];
     }
 
     function checkQueueTime() {
@@ -139,7 +140,7 @@ contract Crowdsale {
             }
         }
     }
-    
+
     /* allows the owner to withdraw funds after end_time is reached. Will return
     false if it is still sale time */
     function withDrawFunds() ownerOnly returns (bool success) {
